@@ -155,7 +155,7 @@ plot(compRandomForest$table, col = compRandomForest$byClass)
 
 <hr>
 #### Using Generalized Boosted Model:
-```{r cache = TRUE}
+```{r cache = TRUE, results='hide'}
 # setting seed
 set.seed(345)
 
@@ -171,9 +171,12 @@ crossValidationParamGB <- trainControl(
 modelFitGenBoost <- train(classe ~ ., data=trainingDataset, method="gbm",
                           trControl=crossValidationParamGB)
 
+
 # because it has huge output, i have commented it
 # modelFitGenBoost
+```
 
+```{r cache = TRUE, results='hide'}
 # Predicting on the test set
 modelPredictGenBoost <- predict(modelFitGenBoost, newdata=testingDataset)
 
