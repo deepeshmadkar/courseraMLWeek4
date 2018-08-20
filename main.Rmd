@@ -8,5 +8,199 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+<hr>
+#### Overview:
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+#### Links For The Raw Data:
+
+<p>
+The data for this project are available here:
+<ul>
+  <li>
+  Link to download traning data: [Training Data CSV]("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+  </li>
+  <li>
+  Link to download test data: [Test Data CSV]("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv") 
+  </li> 
+  <li>
+   Link to main source: [Main Source ]("http://groupware.les.inf.puc-rio.br/har") 
+  </li>
+</ul>
+</p>
+
+```{r}
+# To reproduce the result please change the working directory
+workingDirectory = "/Projects/Rworkspace/coursera/courseraMLWeek4"
+setwd(workingDirectory)
+```
+#### Loading data & performing some basic exploratory data analysis:
+```{r results='hide', message=FALSE, warning=FALSE}
+# Packages
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+```
+
+
+```{r cache = TRUE}
+
+# checking if data directory exists if not creating it
+if(!file.exists("./data")){
+  dir.create("data")
+  
+  # Downloading the file 
+  trainDataUrlPath <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  download.file(trainDataUrlPath, "./data/trainData.csv", method="curl")
+  
+  # Downloading the file 
+  testDataUrlPath <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  download.file(testDataUrlPath, "./data/testData.csv", method="curl")
+}
+```
+
+Taking the overview of the training data before processing.
+</i></p>
+```{r cache = TRUE}
+# Loading the dataset
+trainDataset <- read.csv("./data/trainData.csv", header = TRUE, sep = ",", quote = "\"", na.strings=c("NA","#DIV/0!",""))
+validationDataset <- read.csv("./data/testData.csv", header = TRUE, sep = ",", quote = "\"", na.strings=c("NA","#DIV/0!",""))
+
+# Cleaning the data
+# removing near zero values
+nearZeroVar <- nearZeroVar(trainDataset)
+trainDataset <- trainDataset[, -nearZeroVar]
+
+# removing na's 
+nalVal <- sapply(trainDataset, function(x) mean(is.na(x))) > 0.95
+trainDataset <- trainDataset[, nalVal==FALSE]
+
+# removing the column 1:5
+trainDataset <- trainDataset[, -c(1:5)]
+
+# Partitioning the data
+inTrain  <- createDataPartition(trainDataset$classe, p=0.7, list=FALSE)
+trainingDataset <- trainDataset[inTrain,]
+testingDataset <- trainDataset[-inTrain,]
+
+# Checking the dimmension of the training data
+dim(trainingDataset)
+
+# Checking the dimmension of the validation data
+dim(testingDataset)
+
+```
+#### Model Building
+####Using Decision Tree - Classification Model:
+```{r cache = TRUE}
+# setting seed
+set.seed(987)
+
+# Fitting model using caret package - (method = rpart, i.e: decision tree)
+modelFitDecionTree <- train(classe ~ ., data=trainingDataset, method="rpart")
+modelFitDecionTree
+
+# Predicting on the test set
+modelPredictDecionTree <- predict(modelFitDecionTree, newdata=testingDataset)
+compDecisionTree <- confusionMatrix(modelPredictDecionTree, testingDataset$classe)
+compDecisionTree
+```
+<i>The following are the results obtained by Decision Tree model</i>
+<ul>
+  <li>Decision Tree Accuracy: `r compDecisionTree$overall['Accuracy']` </li>
+  <li>The out-of-sample error: `r 1 - compDecisionTree$overall['Accuracy']`</li>
+</ul>
+
+```{r cache = TRUE}
+# graphical overview
+plot(compDecisionTree$table, col = compDecisionTree$byClass)
+```
+
+<hr>
+#### Using Random Forest:
+```{r cache = TRUE}
+# setting seed
+set.seed(657)
+
+# defining cross validation parameter for the model
+crossValidationParamRF <- trainControl(
+    method="cv",
+    number=5,
+    savePredictions = TRUE,
+    classProbs = TRUE,
+    verboseIter=FALSE
+    )
+
+# Fitting model using caret package - (method = rf, i.e: random forest)
+modelFitRandomForest <- train(classe ~ ., data=trainingDataset, method="rf",
+                          trControl=crossValidationParamRF)
+modelFitRandomForest
+
+# Predicting on the test set
+modelPredictRandomForest <- predict(modelFitRandomForest, newdata=testingDataset)
+
+compRandomForest <- confusionMatrix(modelPredictRandomForest, testingDataset$classe)
+compRandomForest
+```
+<i>The following are the results obtained by Random Forest</i>
+<ul>
+  <li>Random Forest Accuracy: `r compRandomForest$overall['Accuracy']` </li>
+  <li>The out-of-sample error: `r 1 - compRandomForest$overall['Accuracy']`</li>
+</ul>
+
+```{r cache = TRUE}
+# graphical overview
+plot(compRandomForest$table, col = compRandomForest$byClass)
+```
+
+<hr>
+#### Using Generalized Boosted Model:
+```{r cache = TRUE}
+# setting seed
+set.seed(345)
+
+# defining cross validation parameter for the Generalized Boosted Regression Model
+crossValidationParamGB <- trainControl(
+    method="repeatedcv",
+    number=5,
+    repeats = 1,
+    savePredictions = TRUE,
+    classProbs = TRUE
+    )
+# Fitting model using caret package - (method = gbm, i.e: generalized boosted regression)
+modelFitGenBoost <- train(classe ~ ., data=trainingDataset, method="gbm",
+                          trControl=crossValidationParamGB)
+# modelFitGenBoost
+
+# Predicting on the test set
+modelPredictGenBoost <- predict(modelFitGenBoost, newdata=testingDataset)
+
+compGenBoost <- confusionMatrix(modelPredictGenBoost, testingDataset$classe)
+compGenBoost
+
+```
+<i>The following are the results obtained by Generalized boosted model</i>
+<ul>
+  <li>Generalized boosted model Accuracy: `r compGenBoost$overall['Accuracy']` </li>
+  <li>The out-of-sample error: `r 1 - compGenBoost$overall['Accuracy']`</li>
+</ul>
+
+```{r cache = TRUE}
+# graphical overview
+plot(compGenBoost$table, col = compGenBoost$byClass)
+```
+
+<hr>
+#### Model Selection/Conclusion:
+So based on the accuracy, the results of random forest model are more accurate than the other models. so applying the results to the validation dataset.
+
+```{r cache = TRUE}
+# Predicting on the validation Dataset
+finalPrediction <- predict(modelFitRandomForest, newdata=validationDataset)
+finalPrediction
+```
 
 
