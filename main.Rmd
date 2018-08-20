@@ -2,7 +2,9 @@
 title: "Coursera ML Week4: Practical Machine Learning"
 author: "Deepesh Madkar"
 date: "8/19/2018"
-output: html_document
+output: 
+  html_document:
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
@@ -38,11 +40,6 @@ setwd(workingDirectory)
 ```{r results='hide', message=FALSE, warning=FALSE}
 # Packages
 library(caret)
-library(rpart)
-library(rpart.plot)
-library(RColorBrewer)
-library(rattle)
-library(randomForest)
 ```
 
 
@@ -173,6 +170,8 @@ crossValidationParamGB <- trainControl(
 # Fitting model using caret package - (method = gbm, i.e: generalized boosted regression)
 modelFitGenBoost <- train(classe ~ ., data=trainingDataset, method="gbm",
                           trControl=crossValidationParamGB)
+
+# because it has huge output, i have commented it
 # modelFitGenBoost
 
 # Predicting on the test set
